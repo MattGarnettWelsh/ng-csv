@@ -30,6 +30,7 @@ angular.module('ngCsv.directives').
         '$transclude',
         function ($scope, $element, $attrs, $transclude) {
           $scope.csv = '';
+          $scope.dataIsFalse = false;
 
           if (!angular.isDefined($scope.lazyLoad) || $scope.lazyLoad != "true") {
             if (angular.isArray($scope.data)) {
@@ -76,6 +77,9 @@ angular.module('ngCsv.directives').
             if(angular.isFunction(data)){
               data = data();
             }
+            if(data === false){
+              dataIsFalse = true;
+            }
 
             CSV.stringify(data, getBuildCsvOptions()).then(function (csv) {
               $scope.csv = csv;
@@ -115,7 +119,12 @@ angular.module('ngCsv.directives').
 
         element.bind('click', function (e) {
           scope.buildCSV().then(function (csv) {
-            doClick();
+            // Check if csv is a non-empty array
+            if (!dataIsFalse) {
+                doClick();
+            } else {
+                console.log("Data was returned as false - skipping export.");
+            }
           });
           scope.$apply();
         });
