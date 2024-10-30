@@ -251,12 +251,15 @@
      * Author: asafdav - https://github.com/asafdav
      */
     angular.module("ngCsv.directives").directive("ngCsv", [
+        "$log",
         "$parse",
         "$q",
         "CSV",
         "$document",
         "$timeout",
-        function ($parse, $q, CSV, $document, $timeout) {
+        function ($log, $parse, $q, CSV, $document, $timeout) {
+            let dataIsFalse = false;
+
             return {
                 restrict: "AC",
                 scope: {
@@ -341,21 +344,30 @@
                          */
                         $scope.buildCSV = function () {
                             var deferred = $q.defer();
+                            var data = null;
 
                             $element.addClass(
                                 $attrs.ngCsvLoadingClass || "ng-csv-loading"
                             );
 
-                            CSV.stringify(
-                                $scope.data(),
-                                getBuildCsvOptions()
-                            ).then(function (csv) {
-                                $scope.csv = csv;
-                                $element.removeClass(
-                                    $attrs.ngCsvLoadingClass || "ng-csv-loading"
-                                );
-                                deferred.resolve(csv);
-                            });
+                            data = $scope.data();
+                            if (angular.isFunction(data)) {
+                                data = data();
+                            }
+                            if (data === false) {
+                                dataIsFalse = true;
+                            }
+
+                            CSV.stringify(data, getBuildCsvOptions()).then(
+                                function (csv) {
+                                    $scope.csv = csv;
+                                    $element.removeClass(
+                                        $attrs.ngCsvLoadingClass ||
+                                            "ng-csv-loading"
+                                    );
+                                    deferred.resolve(csv);
+                                }
+                            );
                             $scope.$apply(); // Old angular support
 
                             return deferred.promise;
@@ -395,7 +407,14 @@
 
                     element.bind("click", function (e) {
                         scope.buildCSV().then(function (csv) {
-                            doClick();
+                            // Check if csv is a non-empty array
+                            if (!dataIsFalse) {
+                                doClick();
+                            } else {
+                                $log.debug(
+                                    "Data was returned to ng-csv directive as a strict false value - skipping export."
+                                );
+                            }
                         });
                         scope.$apply();
                     });
