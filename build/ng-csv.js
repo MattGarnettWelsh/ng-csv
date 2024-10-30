@@ -251,13 +251,14 @@
      * Author: asafdav - https://github.com/asafdav
      */
     angular.module("ngCsv.directives").directive("ngCsv", [
+        "ToastUtil",
         "$log",
         "$parse",
         "$q",
         "CSV",
         "$document",
         "$timeout",
-        function ($log, $parse, $q, CSV, $document, $timeout) {
+        function (ToastUtil, $log, $parse, $q, CSV, $document, $timeout) {
             let dataIsFalse = false;
 
             return {
@@ -350,16 +351,22 @@
                                 $attrs.ngCsvLoadingClass || "ng-csv-loading"
                             );
 
+                            // $scope.data is a promise, invoke it to create an unresolved promise
                             data = $scope.data();
+
                             if (angular.isFunction(data)) {
                                 data = data();
-                            }
-                            if (data === false) {
-                                dataIsFalse = true;
                             }
 
                             CSV.stringify(data, getBuildCsvOptions()).then(
                                 function (csv) {
+                                    if (csv === false) {
+                                        $log.debug(
+                                            "Data was returned to ng-csv directive as a strict false value - skipping export."
+                                        );
+                                        dataIsFalse = true;
+                                    }
+
                                     $scope.csv = csv;
                                     $element.removeClass(
                                         $attrs.ngCsvLoadingClass ||
@@ -410,10 +417,12 @@
                             // Check if csv is a non-empty array
                             if (!dataIsFalse) {
                                 doClick();
-                            } else {
-                                $log.debug(
-                                    "Data was returned to ng-csv directive as a strict false value - skipping export."
+
+                                ToastUtil.customSuccess(
+                                    "Data exported successfully"
                                 );
+                            } else {
+                                ToastUtil.customError("No data to export");
                             }
                         });
                         scope.$apply();
