@@ -126,93 +126,105 @@
                 var csvContent = "";
 
                 var dataPromise = $q.when(data).then(function (responseData) {
-                    //responseData = angular.copy(responseData);//moved to row creation
-                    // Check if there's a provided header array
-                    if (angular.isDefined(options.header) && options.header) {
-                        var encodingArray, headerString;
+                    if (responseData === false) def.resolve(false);
+                    else {
+                        //responseData = angular.copy(responseData);//moved to row creation
+                        // Check if there's a provided header array
+                        if (
+                            angular.isDefined(options.header) &&
+                            options.header
+                        ) {
+                            var encodingArray, headerString;
 
-                        encodingArray = [];
-                        angular.forEach(
-                            options.header,
-                            function (title, key) {
-                                this.push(that.stringifyField(title, options));
-                            },
-                            encodingArray
-                        );
+                            encodingArray = [];
+                            angular.forEach(
+                                options.header,
+                                function (title, key) {
+                                    this.push(
+                                        that.stringifyField(title, options)
+                                    );
+                                },
+                                encodingArray
+                            );
 
-                        headerString = encodingArray.join(
-                            options.fieldSep ? options.fieldSep : ","
-                        );
-                        csvContent += headerString + EOL;
+                            headerString = encodingArray.join(
+                                options.fieldSep ? options.fieldSep : ","
+                            );
+                            csvContent += headerString + EOL;
+                        }
+
+                        var arrData = [];
+
+                        if (angular.isArray(responseData)) {
+                            arrData = responseData;
+                        } else if (angular.isFunction(responseData)) {
+                            arrData = responseData();
+                        }
+
+                        // Check if using keys as labels
+                        if (
+                            angular.isDefined(options.label) &&
+                            options.label &&
+                            typeof options.label === "boolean"
+                        ) {
+                            var labelArray, labelString;
+
+                            labelArray = [];
+                            angular.forEach(
+                                arrData[0],
+                                function (value, label) {
+                                    this.push(
+                                        that.stringifyField(label, options)
+                                    );
+                                },
+                                labelArray
+                            );
+                            labelString = labelArray.join(
+                                options.fieldSep ? options.fieldSep : ","
+                            );
+                            csvContent += labelString + EOL;
+                        }
+
+                        angular.forEach(arrData, function (oldRow, index) {
+                            var row = angular.copy(arrData[index]);
+                            var dataString, infoArray;
+
+                            infoArray = [];
+
+                            var iterator = !!options.columnOrder
+                                ? options.columnOrder
+                                : row;
+                            angular.forEach(
+                                iterator,
+                                function (field, key) {
+                                    var val = !!options.columnOrder
+                                        ? row[field]
+                                        : field;
+                                    this.push(
+                                        that.stringifyField(val, options)
+                                    );
+                                },
+                                infoArray
+                            );
+
+                            dataString = infoArray.join(
+                                options.fieldSep ? options.fieldSep : ","
+                            );
+                            csvContent +=
+                                index < arrData.length
+                                    ? dataString + EOL
+                                    : dataString;
+                        });
+
+                        // Add BOM if needed
+                        if (options.addByteOrderMarker) {
+                            csv += BOM;
+                        }
+
+                        // Append the content and resolve.
+                        csv += csvContent;
+                        def.resolve(csv);
                     }
-
-                    var arrData = [];
-
-                    if (angular.isArray(responseData)) {
-                        arrData = responseData;
-                    } else if (angular.isFunction(responseData)) {
-                        arrData = responseData();
-                    }
-
-                    // Check if using keys as labels
-                    if (
-                        angular.isDefined(options.label) &&
-                        options.label &&
-                        typeof options.label === "boolean"
-                    ) {
-                        var labelArray, labelString;
-
-                        labelArray = [];
-                        angular.forEach(
-                            arrData[0],
-                            function (value, label) {
-                                this.push(that.stringifyField(label, options));
-                            },
-                            labelArray
-                        );
-                        labelString = labelArray.join(
-                            options.fieldSep ? options.fieldSep : ","
-                        );
-                        csvContent += labelString + EOL;
-                    }
-
-                    angular.forEach(arrData, function (oldRow, index) {
-                        var row = angular.copy(arrData[index]);
-                        var dataString, infoArray;
-
-                        infoArray = [];
-
-                        var iterator = !!options.columnOrder
-                            ? options.columnOrder
-                            : row;
-                        angular.forEach(
-                            iterator,
-                            function (field, key) {
-                                var val = !!options.columnOrder
-                                    ? row[field]
-                                    : field;
-                                this.push(that.stringifyField(val, options));
-                            },
-                            infoArray
-                        );
-
-                        dataString = infoArray.join(
-                            options.fieldSep ? options.fieldSep : ","
-                        );
-                        csvContent +=
-                            index < arrData.length
-                                ? dataString + EOL
-                                : dataString;
-                    });
-
-                    // Add BOM if needed
-                    if (options.addByteOrderMarker) {
-                        csv += BOM;
-                    }
-
-                    // Append the content and resolve.
-                    csv += csvContent;
-                    def.resolve(csv);
                 });
 
                 if (typeof dataPromise["catch"] === "function") {
